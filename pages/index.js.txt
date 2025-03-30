@@ -1,0 +1,88 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { SuiClient } from "@mysten/sui.js";
+
+const sui = new SuiClient({ url: "https://fullnode.devnet.sui.io" });
+const CONTRACT_ADDRESS = "<SMART_CONTRACT_ADDRESS>";
+const DEV_WALLET = "0x59d739c9e639c0835a2cd95ed0465b754f660b8f0304d9798e2f6ecce1802752";
+
+export default function GoalTracker() {
+  const [goal, setGoal] = useState("");
+  const [stake, setStake] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [milestones, setMilestones] = useState([]);
+  const [ranking, setRanking] = useState([]);
+
+  useEffect(() => {
+    fetchRanking();
+  }, []);
+
+  const handleSubmit = async () => {
+    try {
+      const tx = await sui.executeMoveCall({
+        packageObjectId: CONTRACT_ADDRESS,
+        module: "goal_tracking",
+        function: "create_goal",
+        typeArguments: [],
+        arguments: ["0x<YOUR_WALLET_ADDRESS>", goal, stake, deadline],
+        gasBudget: 10000,
+      });
+      console.log("Transaction success:", tx);
+    } catch (error) {
+      console.error("Error submitting goal:", error);
+    }
+  };
+
+  const fetchRanking = async () => {
+    try {
+      const result = await sui.getObject({
+        id: "<RANKING_OBJECT_ID>",
+        options: { showContent: true },
+      });
+      setRanking(result.content.fields.entries);
+    } catch (error) {
+      console.error("Error fetching ranking:", error);
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-md mx-auto text-center text-blue-500">
+      <h1 className="text-3xl font-bold">Defeat One's Weaker Self</h1>
+      <p className="mt-2">Setze dir Ziele, investiere Tokens und bleib fokussiert!</p>
+      <Card className="mt-6">
+        <CardContent className="space-y-4">
+          <Input
+            type="text"
+            placeholder="Zielbeschreibung"
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="Stake (SUI)"
+            value={stake}
+            onChange={(e) => setStake(e.target.value)}
+          />
+          <Input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+          />
+          <Button onClick={handleSubmit}>Ziel erstellen</Button>
+        </CardContent>
+      </Card>
+      <div className="mt-6">
+        <h3 className="text-lg font-bold">Ranking</h3>
+        <ul>
+          {ranking.map((entry, index) => (
+            <li key={index} className="border-b p-2">
+              {entry[0]}: {entry[1]} SUI
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
